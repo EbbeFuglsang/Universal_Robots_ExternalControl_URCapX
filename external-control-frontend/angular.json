@@ -1,5 +1,5 @@
 {
-  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "$schema": "./../node_modules/@angular/cli/lib/config/schema.json",
   "cli": {
     "analytics": false
   },
@@ -37,8 +37,8 @@
             ],
             "stylePreprocessorOptions": {
               "includePaths": [
-                "node_modules/@universal-robots",
-                "node_modules/@universal-robots/designtokens/src"
+                "../node_modules/@universal-robots",
+                "../node_modules/@universal-robots/designtokens/src"
               ]
             },
             "webWorkerTsConfig": "tsconfig.worker.json",
@@ -116,8 +116,8 @@
             ],
             "stylePreprocessorOptions": {
               "includePaths": [
-                "node_modules/@universal-robots",
-                "node_modules/@universal-robots/designtokens/src"
+                "../node_modules/@universal-robots",
+                "../node_modules/@universal-robots/designtokens/src"
               ]
             }
           }

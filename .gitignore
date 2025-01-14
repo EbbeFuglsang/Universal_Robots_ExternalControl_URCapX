@@ -1,6 +1,7 @@
 
 # Ignore specific files
 .DS_Store
+run-simulator
 
 # Ignore directories
 /target
@@ -11,4 +12,3 @@
 /node_modules
 
 # Ignore specific file types
-package-lock.json

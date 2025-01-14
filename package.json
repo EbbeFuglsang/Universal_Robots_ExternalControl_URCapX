@@ -1,4 +1,8 @@
 {
+  "workspaces": [
+    "external-control-backend",
+    "external-control-frontend"
+  ],
   "name": "external-control",
   "version": "0.0.0",
   "scripts": {
@@ -6,7 +10,6 @@
     "install-frontend": "cd external-control-frontend && npm install",
     "install-backend": "cd external-control-backend && npm install",
     "lint": "cd external-control-frontend && npm run lint",
-    "postinstall": "npm run install-frontend && npm run install-backend",
     "prebuild": "npm run clean-dist && npm run clean-target",
     "build-arm": "export ARCH=linux/arm64 && npm run build",
     "build": "npm run build-backend && npm run build-frontend",
