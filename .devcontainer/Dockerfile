@@ -1,4 +1,4 @@
-FROM docker.urrd.dk/node:20.14.0-bookworm
+FROM node:20.14.0-bookworm
 ENV PS_VERSION=0.14.74 \
     URSIM_VERSION=0.12.159 \
     SDK_VERSION=5.4.52
