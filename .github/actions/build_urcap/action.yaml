@@ -1,0 +1,128 @@
+
+# action.yml
+name: 'build'
+description: 'Builds a URCap in a Devcontainer'
+inputs:
+  build-type:  #type of build
+    description: 'build fixed or latest'
+    required: true
+    default: 'ci'
+    type: string
+    enum: ['ci', 'install']
+  path:
+    description: 'path to the project'
+    required: false
+    default: '.'
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+      - name: Semantic versioning
+        id: semver
+        uses: paulhatch/semantic-version@v5.4.0
+        with:
+          # The prefix to use to identify tags
+          tag_prefix: "v"
+          # A string which, if present in a git commit, indicates that a change represents a
+          # major (breaking) change, supports regular expressions wrapped with '/'
+          major_pattern: "(MAJOR)"
+          # A string which indicates the flags used by the `major_pattern` regular expression. Supported flags: idgs
+          major_regexp_flags: ""
+          # Same as above except indicating a minor change, supports regular expressions wrapped with '/'
+          minor_pattern: "(MINOR)"
+          # A string which indicates the flags used by the `minor_pattern` regular expression. Supported flags: idgs
+          minor_regexp_flags: ""
+          # A string to determine the  format of the version output
+          version_format: "${major}.${minor}.${patch}-${increment}" #PolyScope X is following the 
+          # Optional path to check for changes. If any changes are detected in the path the
+          # 'changed' output will true. Enter multiple paths separated by spaces.
+          ##change_path: "src/my-service"
+          # Named version, will be used as suffix for name version tag
+          ##namespace: my-service
+          # If this is set to true, *every* commit will be treated as a new version.
+          bump_each_commit: true
+          # If bump_each_commit is also set to true, setting this value will cause the version to increment only if the pattern specified is matched.
+          bump_each_commit_patch_pattern: "(PATCH)"
+          # If true, the body of commits will also be searched for major/minor patterns to determine the version type.
+          search_commit_body: true
+          # The output method used to generate list of users, 'csv' or 'json'.
+          user_format_type: "csv"
+          # Prevents pre-v1.0.0 version from automatically incrementing the major version.
+          # If enabled, when the major version is 0, major releases will be treated as minor and minor as patch. Note that the version_type output is unchanged.
+          enable_prerelease_mode: false
+          # If enabled, diagnostic information will be added to the action output.
+          debug: false
+          # If true, the branch will be used to select the maximum version.
+          version_from_branch: false
+      - name: Adjust semantic version string
+        id: ver
+        shell: bash  
+        run: |
+          version=${{ steps.semver.outputs.version }}
+          tagged=${{ steps.semver.outputs.is_tagged }}
+          version_tag=${{ steps.semver.outputs.version_tag }}
+          echo "tagged $tagged"
+          echo "version_tag $version_tag"
+          fourth_digit=$(echo "$version" | cut -d '.' -f 4)
+          if [ $tagged == true ]; then
+              # Strip the fourth digit and output the shortened version
+              version=$(echo "$version" | sed 's/-.*$//')
+              echo "pre-release=false" >> $GITHUB_OUTPUT
+          else
+              # If the fourth digit is not zero, keep the original version
+              version="$version"
+              echo "pre-release=true" >> $GITHUB_OUTPUT
+          fi
+          echo "${{inputs.build-type}}"
+          echo "install"
+          if [ "${{inputs.build-type}}" = "install" ];then
+              version="$version-latest"   
+              echo "install detected"           
+          fi
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+
+      - name: Update values.yaml
+        uses: fjogeleit/yaml-update-action@main
+        with:
+          valueFile: '${{inputs.path}}/manifest.yaml'
+          propertyPath: 'metadata.version'
+          value: ${{ steps.ver.outputs.version }}
+          commitChange: false       
+      - name: Build and run Dev Container task
+        id: build
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: |
+            cd ${{inputs.path}} 
+            npm ${{inputs.build-type}}
+            npm run build        
+
+      - name: Capture output file
+        id: capture_output
+        shell: bash 
+        run: |
+          # Assuming the output file is in the ${{inputs.path}}/target directory
+          output_file=$(find ${{inputs.path}}/target -name "*.urcapx")
+          output_basename=$(basename ${output_file})
+          echo "output-basename=$output_basename" >> $GITHUB_OUTPUT
+          echo "output-file=$output_file" >> $GITHUB_OUTPUT
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.capture_output.outputs.output-basename }}   
+          path: ${{inputs.path}}/target  
+          retention-days: 1
+
+outputs:
+  output-file:
+    description: 'The output file path'
+    value: ${{ steps.capture_output.outputs.output-file}}   
+  semVer:
+    description: 'Semantic versioning string'
+    value: ${{ steps.ver.outputs.version }}
+  pre-release:
+    description: 'Boolean to tell if pre-release is made'
+    value: ${{ steps.ver.outputs.pre-release }}

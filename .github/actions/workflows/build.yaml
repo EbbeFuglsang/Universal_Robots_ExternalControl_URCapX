@@ -1,0 +1,25 @@
+name: 'build'
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs: 
+      output-file: ${{ steps.set_output.outputs.value }} 
+
+    steps:
+      - name: Checkout code 
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0           
+      - uses: ./.github/actions/build_urcap
+        id: build_urcap
+        with:
+          build-type: ci
+          path: .       
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')   
+        with:
+          files: ${{ steps.build_urcap.outputs.output-file }}
