@@ -10,5 +10,6 @@ run-simulator
 /.idea
 .vscode/
 /node_modules
+**/src/generated
 
 # Ignore specific file types
