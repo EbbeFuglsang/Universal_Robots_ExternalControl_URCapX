@@ -1,0 +1,23 @@
+name: 'test'
+on:
+  workflow_call:
+  workflow_run:
+    workflows: ['build']  #workflow that trigger this workflow
+    types:
+      - completed
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout code 
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0           
+      - uses: ./.github/actions/test-in-ursim
+        with:
+          ursim: devcontainers-test/10.7/.devcontainer/devcontainer.json
+          build-type: ci 
+          secret_PAT: ${{ secrets.GH_PAT }}
+          secret_GH: ${{ secrets.GITHUB_TOKEN }}
