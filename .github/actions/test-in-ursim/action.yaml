@@ -1,0 +1,63 @@
+# action.yml
+name: 'test-in-ursim'
+description: 'Test URCap in usim Devcontainer'
+inputs:
+  ursim:  #ursim
+    description: 'Folder where the ursim devcontainer is located'
+    required: true
+    default: 'devcontainers-test\10.7'
+  secret_GH:
+    required: true
+    description: 'Personal Access Token'       
+
+
+runs:
+  using: "composite"
+  steps:
+      #- uses: ./.github/actions/build_urcap # Maybe this could be used instead of building again https://github.com/actions/download-artifact
+      #  with:
+      #    build-type: ${{inputs.build-type}}
+      - name: copy artifact
+        id: copy_artifact
+        shell: bash  # Specify the shell
+        run: |
+          ls -al
+          cp .github/actions/test-in-ursim/wait_for_response.sh .
+          cp .github/actions/test-in-ursim/check_response.sh .
+            
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.copy_artifact.outputs.output-basename }} 
+          github-token: ${{ inputs.secret_GH }} # Personal Access Token with `actions:read` permissions
+          repository: ${{ github.repository }} # Current repository
+          run-id: ${{ github.event.workflow_run.id }}    
+      - name: Find URCap
+        id: find_urcap
+        shell: bash
+        run: | 
+          output_file=$(find . -type f -name "*.urcapx" )
+          output_basename=$(basename ${output_file})     
+          echo "output-basename=$output_basename" >> $GITHUB_OUTPUT
+          mkdir target
+          cp $output_file ./target/
+          assumed_urcap_id="$(echo $output_basename | sed 's/-.*//')"
+          echo "assumed_urcap_id=$assumed_urcap_id" >> $GITHUB_OUTPUT
+
+      - name: Build and run Dev Container task
+        uses: devcontainers/ci@v0.3
+        with:
+          configFile: ${{inputs.ursim}}
+          push: never
+          runCmd: |
+            set -e
+            npm install @universal-robots/urcap-utils
+            ls            
+            ./run-simulator & 
+            chmod 777 wait_for_response.sh
+            chmod 777 check_response.sh
+            ./wait_for_response.sh "host.docker.internal/universal-robots/urservice/api/v1/health" "{\"alive\": true}" 600
+            ./wait_for_response.sh "host.docker.internal/universal-robots/java-backend/java-backend/rest-api/application/boot/progress" "{\"status\":\"STARTED\"}" 600
+            npm run env -- install-urcap ./target/${{ steps.find_urcap.outputs.output-basename }} 
+            ./check_response.sh "host.docker.internal/universal-robots/urservice/api/v1/urcaps/universal-robots/${{ steps.find_urcap.outputs.assumed_urcap_id }}" 
+            sleep 2  
